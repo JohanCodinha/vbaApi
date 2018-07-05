@@ -9,6 +9,7 @@
   "dependencies": {
     "axios": "^0.18.0",
     "crocks": "^0.9.4",
+    "jsonwebtoken": "^8.3.0",
     "paperplane": "^1.2.2",
     "pg": "^7.4.3",
     "ramda": "^0.25.0"
