@@ -1,0 +1,24 @@
+{
+  "name": "vbaApi",
+  "version": "1.0.0",
+  "description": "Victorian Biodiversity Atlas REST API",
+  "main": "main.js",
+  "repository": "https://github.com/JohanCodinha/vbaApi",
+  "author": "Johan Codinha",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "crocks": "^0.9.4",
+    "paperplane": "^1.2.2",
+    "pg": "^7.4.3",
+    "ramda": "^0.25.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.0.1",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.8.0",
+    "eslint-plugin-standard": "^3.1.0"
+  }
+}
