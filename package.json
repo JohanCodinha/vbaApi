@@ -14,12 +14,19 @@
     "pg": "^7.4.3",
     "ramda": "^0.25.0"
   },
+  "scripts": {
+    "fix": "./node_modules/.bin/eslint --fix",
+    "test": "node_modules/.bin/ava tests/**/*.test.js --verbose",
+    "test:watch": "node_modules/.bin/ava --verbose --watch"
+  },
   "devDependencies": {
+    "ava": "^0.25.0",
     "eslint": "^5.0.1",
     "eslint-config-standard": "^11.0.0",
     "eslint-plugin-import": "^2.13.0",
     "eslint-plugin-node": "^6.0.1",
     "eslint-plugin-promise": "^3.8.0",
-    "eslint-plugin-standard": "^3.1.0"
+    "eslint-plugin-standard": "^3.1.0",
+    "supertest": "^3.1.0"
   }
 }
