@@ -9,7 +9,6 @@ test.beforeEach(async t => {
 
 test('guest login return jwt', async t => {
   const {body, status, type} = await t.context.request.get('/auth/guest')
-  console.log(body.token)
   t.is(status, 200)
   t.is(typeof body.token, 'string')
   t.is(type, 'application/json')
