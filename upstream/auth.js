@@ -1,6 +1,7 @@
 const request = require('request')
-const { Async, propPathOr } = require('crocks')
+const { Async, constant, propPathOr } = require('crocks')
 const { compose, cond, equals, flip, gt, invoker, isNil, not, prop, test } = require('ramda')
+const { errorResponse } = require('../lib/utils')
 const notNil = compose(not, isNil)
 const statusCodeProp = prop('statusCode')
 const gt400 = flip(gt)(400)
@@ -20,15 +21,35 @@ const getCookie = form => Async((reject, resolve) => {
     },
     // (error, response, body)
     flip(cond([
-      [(_, rej) => notNil(rej), reject],
-      [statusCodeGt400,
+      [
+        flip(notNil),
+        (_, error) => reject(errorResponse(500, {
+          code: 'INTERNAL_ERROR',
+          message: 'Failure to connect with upstream',
+          details: error.message}))],
+      [
+        statusCodeGt400,
         compose(
           reject,
-          (code) => new Error(`Upstream system returned error code: ${code}`),
+          errorResponse(500),
+          (code) => ({
+            code: 'INTERNAL_ERROR',
+            message: `Upstream system returned error code: ${code}`
+          }),
           prop('statusCode')
         )
       ],
-      [urlContainsErrors, () => reject(new Error('Login with upstream system failled'))],
+      [
+        urlContainsErrors,
+        compose(
+          reject,
+          errorResponse(401),
+          constant({
+            code: 'INTERNAL_ERROR',
+            message: 'Login with upstream system failled'
+          })
+        )
+      ],
       [statusCodeIs302, compose(
         resolve,
         extractCookies(jar),
