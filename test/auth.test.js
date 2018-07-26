@@ -7,14 +7,14 @@ test.beforeEach(async t => {
   t.context.request = request(app)
 })
 
-test('guest login return jwt', async t => {
+test('Auth - guest login return jwt', async t => {
   const {body, status, type} = await t.context.request.get('/auth/guest')
   t.is(status, 200)
   t.is(typeof body.jwt, 'string')
   t.is(type, 'application/json')
 })
 
-test('user login return jwt', async t => {
+test('Auth - user login return jwt', async t => {
   const { body, status, type } = await t.context.request
     .post('/auth')
     .send({ username, password })
@@ -23,7 +23,7 @@ test('user login return jwt', async t => {
   t.is(type, 'application/json')
 })
 
-test('user login return error with missing password', async t => {
+test('Auth - user login return error with missing password', async t => {
   const { body, status, type } = await t.context.request
     .post('/auth')
     .send({ username: 'Karen' })
@@ -34,7 +34,7 @@ test('user login return error with missing password', async t => {
   t.is(body.errors.length, 1)
 })
 
-test('user login return error with missing username', async t => {
+test('Auth - user login return error with missing username', async t => {
   const { body, status, type } = await t.context.request
     .post('/auth')
     .send({ password: 'neccesary' })
@@ -45,7 +45,7 @@ test('user login return error with missing username', async t => {
   t.is(body.errors.length, 1)
 })
 
-test('user login return error with missing credentials', async t => {
+test('Auth - user login return error with missing credentials', async t => {
   const { body, status, type } = await t.context.request
     .post('/auth')
     .send({})
