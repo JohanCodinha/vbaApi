@@ -8,6 +8,7 @@ const { converge, invoker, objOf } = require('ramda')
 
 const { errorResponse, signJwt, tapLog } = require('../lib/utils')
 const { getCookie } = require('../upstream/auth')
+const { getUserDetails } = require('../upstream/userDetails')
 
 const toPromise = invoker(0, 'toPromise')
 
@@ -27,6 +28,7 @@ const extractCredentials = converge(
 
 const login = form =>
   getCookie(form)
+    // .map(x => (console.log('auth.js:', x), x))
     .map(compose(objOf('jwt'), signJwt))
 
 const guestLogin = compose(
@@ -40,7 +42,10 @@ const guestLogin = compose(
 const userLogin = compose(
   toPromise,
   map(json),
-  chain(login),
+  map(compose(objOf('jwt'), signJwt)),
+  map(tapLog),
+  chain(getUserDetails),
+  chain(getCookie),
   bimap(errorResponse(400), identity),
   resultToAsync(extractCredentials)
 )

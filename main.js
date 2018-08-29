@@ -11,7 +11,7 @@ const listening = err =>
 
 const endpoints = routes({
   '/auth/guest': guestLogin,
-  '/auth': userLogin
+  '/auth': userLogin,
 })
 
 const opts = { errLogger: logger, logger }
