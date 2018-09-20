@@ -4,7 +4,7 @@ const {
   propPath, resultToAsync, compose, constant, identity
 } = require('crocks')
 const { Resolved } = Async
-const { converge, invoker, objOf } = require('ramda')
+const { merge, pick, prop, props, converge, invoker, objOf } = require('ramda')
 
 const { errorResponse, signJwt, tapLog } = require('../lib/utils')
 const { getCookie } = require('../upstream/auth')
@@ -26,10 +26,10 @@ const extractCredentials = converge(
   ]
 )
 
+const cookieStrToJwt = compose(objOf('jwt'), signJwt)
 const login = form =>
   getCookie(form)
-    // .map(x => (console.log('auth.js:', x), x))
-    .map(compose(objOf('jwt'), signJwt))
+    .map(cookieStrToJwt)
 
 const guestLogin = compose(
   toPromise,
@@ -42,9 +42,27 @@ const guestLogin = compose(
 const userLogin = compose(
   toPromise,
   map(json),
-  map(compose(objOf('jwt'), signJwt)),
   map(tapLog),
-  chain(getUserDetails),
+  chain(
+    converge(
+      liftA2(merge),
+      [
+        compose(
+          Resolved,
+          cookieStrToJwt
+        ),
+        compose(
+          map(
+            compose(
+              pick(['username', 'userUid']),
+              prop('data')
+            )
+          ),
+          getUserDetails
+        )
+      ]
+    )
+  ),
   chain(getCookie),
   bimap(errorResponse(400), identity),
   resultToAsync(extractCredentials)

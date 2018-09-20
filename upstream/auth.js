@@ -1,8 +1,8 @@
-const request = require('request-promise')
-const { Async, constant, propOr, propPathOr } = require('crocks')
-const { and, always, compose, cond, complement, propSatisfies, isEmpty, converge, or, call, equals, flip, gt, identity, invoker, isNil, mergeDeepLeft, not, prop, test } = require('ramda')
-const { errorResponse } = require('../lib/utils')
-// const notNil = compose(not, isNil)
+const request = require('request-promise-native')
+const { Async, constant, propPathOr } = require('crocks')
+const { head, split, join, nAry, concat, converge, map, both, either, and, compose, curry, cond, complement, propSatisfies, isEmpty,
+  or, equals, flip, gt, identity, mergeDeepLeft, prop, test } = require('ramda')
+const { errorResponse, tapLog } = require('../lib/utils')
 const statusCodeProp = prop('statusCode')
 const gt400 = flip(gt)(400)
 const statusCodeGt400 = compose(gt400, statusCodeProp)
@@ -10,13 +10,13 @@ const statusCodeIs = code => compose(equals(code), statusCodeProp)
 const urlContainsErrors = compose(test(/\?error=1/), propPathOr('', ['headers', 'location']))
 // const extractCookies = flip(invoker(1, 'getCookieString'))
 const { Rejected, Resolved } = Async
-
-const getCookie = form => {
-  return Async.fromPromise((url) => {
+const mergeTwoDeep = curry(nAry(2, mergeDeepLeft))
+const getCookie = form =>
+  Async.fromPromise(url => {
     const jar = request.jar()
     return request(
       {
-        method: 'GET',
+        method: 'POST',
         url,
         timeout: 5000,
         jar,
@@ -24,20 +24,21 @@ const getCookie = form => {
         simple: false,
         resolveWithFullResponse: true
       })
-      .then(x => mergeDeepLeft({ cookieString: jar.getCookieString(url) })(x))
-      // .then(x=> (console.log('cookiestring',x.cookieString), x))
-  }
-  )('https://vba.dse.vic.gov.au/vba/login')
+      .then(x => (console.log(x.headers), x))
+      // .then(x => {console.log(x.headers['set-cookie'], jar.getCookieString(url)) 
+      //   mergeTwoDeep({ cookieString: jar.getCookieString(url) })(x)})
+  })('https://vba.dse.vic.gov.au/vba/login')
     .bimap(errorHandling, identity)
     .chain(responseHandling)
-}
 
 const errorHandling = error =>
-  errorResponse(500, {
+{
+  return errorResponse(500, {
     code: 'INTERNAL_ERROR',
     message: 'Failure to connect with upstream',
     details: error.message,
     codeErr: error})
+}
 
 const responseHandling =
   cond([
@@ -54,11 +55,10 @@ const responseHandling =
       )
     ],
     [
-      converge(or,
-        [
-          urlContainsErrors,
-          propSatisfies(isEmpty, 'cookieString')
-        ]),
+      //either(
+        urlContainsErrors,
+        //propSatisfies(isEmpty, 'cookieString')
+      //),
       compose(
         Rejected,
         errorResponse(401),
@@ -69,17 +69,30 @@ const responseHandling =
       )
     ],
     [
-      converge(and,
-        [
-          statusCodeIs(303),
-          propSatisfies(complement(isEmpty), 'cookieString')
-        ]),
+      both(
+        statusCodeIs(302),
+        //propSatisfies(complement(isEmpty), 'cookieString')
+      ),
       compose(
         Resolved,
-        prop('cookieString')
+        join('; '),
+        map(
+          compose(
+            head,
+            split(';')
+          )
+        ),
+        prop('set-cookie'),
+        prop('headers')
       )
+    ],
+    [
+      (x) => {
+        console.log(x)
+        debugger;
+      },
+      compose(Rejected)
     ]
-
   ])
 
 module.exports = {
