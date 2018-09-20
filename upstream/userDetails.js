@@ -1,13 +1,15 @@
 const request = require('request-promise')
-const { Async, constant, propPathOr, map } = require('crocks')
-const { head, call, equals, gt, not, isNil, flip, cond, compose, concat, converge, curry, identity, lensProp, merge, mergeAll, mergeDeepRight, objOf, over, pair, prop, reduce, useWith,} = require('ramda')
-const { errorResponse } = require('../lib/utils')
+const { Async, map } = require('crocks')
+const {
+  head,
+  compose,
+  identity,
+  mergeDeepRight,
+  objOf,
+  prop,
+  reduce,
+  useWith } = require('ramda')
 const { parser } = require('../lib/xmlrpcToJson')
-const statusCodeProp = prop('statusCode')
-const gt400 = flip(gt)(400)
-const statusCodeIs = code => compose(equals(code), statusCodeProp)
-const statusCodeGt400 = compose(gt400, statusCodeProp)
-const notNil = compose(not, isNil)
 const URL = 'https://vba.dse.vic.gov.au/vba/vba/sc/IDACall?isc_rpc=1&isc_v=SC_SNAPSHOT-2010-08-03&isc_xhr=1'
 
 const options = {
@@ -42,18 +44,18 @@ const userDetailsTransaction =
     </operations>
   </transaction>`
 const buildOptions = (option, transaction, cookie) =>
-  reduce(mergeDeepRight, option, [cookie, transaction])
+  reduce(mergeDeepRight, option, [transaction, cookie])
 
-const buildTransaction = compose(
+const transactionPath = compose(
   objOf('form'),
   objOf('_transaction')
 )
-const buildCookie = compose(
+const cookiePath = compose(
   objOf('headers'),
   objOf('Cookie')
 )
 
-const requestOptions = useWith(buildOptions, [identity, buildTransaction, buildCookie])
+const requestOptions = useWith(buildOptions, [identity, transactionPath, cookiePath])
 
 const getUserDetails = compose(
   map(

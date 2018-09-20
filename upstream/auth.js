@@ -1,44 +1,44 @@
 const request = require('request-promise-native')
-const { Async, constant, propPathOr } = require('crocks')
-const { head, split, join, nAry, concat, converge, map, both, either, and, compose, curry, cond, complement, propSatisfies, isEmpty,
-  or, equals, flip, gt, identity, mergeDeepLeft, prop, test } = require('ramda')
-const { errorResponse, tapLog } = require('../lib/utils')
+const { Async, constant, chain, bimap, propPathOr } = require('crocks')
+const { T, head, merge, objOf, split, join, map, compose, cond,
+  equals, flip, gt, identity, prop, test } = require('ramda')
+const { errorResponse } = require('../lib/utils')
 const statusCodeProp = prop('statusCode')
 const gt400 = flip(gt)(400)
 const statusCodeGt400 = compose(gt400, statusCodeProp)
 const statusCodeIs = code => compose(equals(code), statusCodeProp)
-const urlContainsErrors = compose(test(/\?error=1/), propPathOr('', ['headers', 'location']))
-// const extractCookies = flip(invoker(1, 'getCookieString'))
 const { Rejected, Resolved } = Async
-const mergeTwoDeep = curry(nAry(2, mergeDeepLeft))
-const getCookie = form =>
-  Async.fromPromise(url => {
-    const jar = request.jar()
-    return request(
-      {
-        method: 'POST',
-        url,
-        timeout: 5000,
-        jar,
-        form,
-        simple: false,
-        resolveWithFullResponse: true
-      })
-      .then(x => (console.log(x.headers), x))
-      // .then(x => {console.log(x.headers['set-cookie'], jar.getCookieString(url)) 
-      //   mergeTwoDeep({ cookieString: jar.getCookieString(url) })(x)})
-  })('https://vba.dse.vic.gov.au/vba/login')
-    .bimap(errorHandling, identity)
-    .chain(responseHandling)
 
+const requestBaseOption = {
+  method: 'POST',
+  url: 'https://vba.dse.vic.gov.au/vba/login',
+  timeout: 5000,
+  simple: false,
+  resolveWithFullResponse: true
+}
 const errorHandling = error =>
-{
-  return errorResponse(500, {
+  errorResponse(500, {
     code: 'INTERNAL_ERROR',
     message: 'Failure to connect with upstream',
     details: error.message,
     codeErr: error})
-}
+
+const cleanResCookie = compose(
+  join('; '),
+  map(
+    compose(
+      head,
+      split(';')
+    )
+  ),
+  prop('set-cookie'),
+  prop('headers')
+)
+
+const urlContainsErrors = compose(
+  test(/\?error=1/),
+  propPathOr('', ['headers', 'location'])
+)
 
 const responseHandling =
   cond([
@@ -55,45 +55,37 @@ const responseHandling =
       )
     ],
     [
-      //either(
-        urlContainsErrors,
-        //propSatisfies(isEmpty, 'cookieString')
-      //),
+      urlContainsErrors,
       compose(
         Rejected,
         errorResponse(401),
         constant({
-          code: 'INTERNAL_ERROR',
+          code: 'FAILLED_LOGIN',
           message: 'Login with upstream system failled'
         })
       )
     ],
     [
-      both(
-        statusCodeIs(302),
-        //propSatisfies(complement(isEmpty), 'cookieString')
-      ),
+      statusCodeIs(302),
       compose(
         Resolved,
-        join('; '),
-        map(
-          compose(
-            head,
-            split(';')
-          )
-        ),
-        prop('set-cookie'),
-        prop('headers')
+        cleanResCookie
       )
     ],
     [
-      (x) => {
-        console.log(x)
-        debugger;
-      },
-      compose(Rejected)
+      T,
+      Rejected
     ]
   ])
+
+const getCookie =
+  compose(
+    chain(responseHandling),
+    bimap(errorHandling, identity),
+    Async.fromPromise(request),
+    merge(requestBaseOption),
+    objOf('form')
+  )
 
 module.exports = {
   getCookie
