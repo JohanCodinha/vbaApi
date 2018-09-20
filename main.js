@@ -11,14 +11,10 @@ const listening = err =>
 
 const endpoints = routes({
   '/auth/guest': guestLogin,
-  '/auth': userLogin,
+  '/auth': userLogin
 })
 
-const opts = { errLogger: logger, logger }
-const app = mount(
-  compose(endpoints, parseJson),
-  opts
-)
+const app = compose(endpoints, parseJson)
 
-http.createServer(app, opts).listen(port, listening)
+http.createServer(mount({app, logger})).listen(port, listening)
 module.exports = app
