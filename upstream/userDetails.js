@@ -57,7 +57,7 @@ const cookiePath = compose(
 
 const requestOptions = useWith(buildOptions, [identity, transactionPath, cookiePath])
 
-const getUserDetails = compose(
+const fetchUserDetails = compose(
   map(
     compose(
       head,
@@ -70,5 +70,5 @@ const getUserDetails = compose(
 )
 
 module.exports = {
-  getUserDetails
+  fetchUserDetails
 }

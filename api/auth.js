@@ -4,11 +4,11 @@ const {
   propPath, resultToAsync, compose, constant, identity
 } = require('crocks')
 const { Resolved } = Async
-const { merge, pick, prop, props, converge, invoker, objOf } = require('ramda')
+const { merge, pick, prop, converge, invoker, objOf } = require('ramda')
 
 const { errorResponse, signJwt, tapLog } = require('../lib/utils')
 const { getCookie } = require('../upstream/auth')
-const { getUserDetails } = require('../upstream/userDetails')
+const { fetchUserDetails } = require('../upstream/userDetails')
 
 const toPromise = invoker(0, 'toPromise')
 
@@ -39,10 +39,19 @@ const guestLogin = compose(
   constant({ guest: 2, enter: 'Guest: I Agree' })
 )
 
+const getUserDetails = compose(
+  map(
+    compose(
+      pick(['username', 'userUid']),
+      prop('data')
+    )
+  ),
+  fetchUserDetails
+)
+
 const userLogin = compose(
   toPromise,
   map(json),
-  map(tapLog),
   chain(
     converge(
       liftA2(merge),
@@ -51,15 +60,7 @@ const userLogin = compose(
           Resolved,
           cookieStrToJwt
         ),
-        compose(
-          map(
-            compose(
-              pick(['username', 'userUid']),
-              prop('data')
-            )
-          ),
-          getUserDetails
-        )
+        getUserDetails
       ]
     )
   ),
