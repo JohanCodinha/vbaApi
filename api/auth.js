@@ -1,10 +1,10 @@
 const { json } = require('paperplane')
 const {
-  Async, chain, liftA2, maybeToResult, map, bimap,
+  Async, maybeToAsync, safeAfter, isObject, chain, liftA2, maybeToResult, map, bimap,
   propPath, resultToAsync, compose, constant, identity
 } = require('crocks')
 const { Resolved } = Async
-const { merge, pick, prop, converge, invoker, objOf } = require('ramda')
+const { merge, pick, converge, invoker, objOf, prop } = require('ramda')
 
 const { errorResponse, signJwt, tapLog } = require('../lib/utils')
 const { getCookie } = require('../upstream/auth')
@@ -40,18 +40,24 @@ const guestLogin = compose(
 )
 
 const getUserDetails = compose(
-  map(
+  chain(
     compose(
-      pick(['username', 'userUid']),
-      prop('data')
+      maybeToAsync(
+        errorResponse(502, { message: 'Upstream backend response error'})
+      ),
+      map(pick(['username', 'userUid'])),
+      safeAfter(isObject, prop('data'))
     )
   ),
+  map(tapLog),
   fetchUserDetails
 )
 
 const userLogin = compose(
   toPromise,
+  map(tapLog),
   map(json),
+  bimap(tapLog, tapLog ),
   chain(
     converge(
       liftA2(merge),
