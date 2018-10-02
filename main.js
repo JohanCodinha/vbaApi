@@ -3,6 +3,7 @@ const { logger, mount, parseJson, routes } = require('paperplane')
 const { compose } = require('ramda')
 
 const { guestLogin, userLogin } = require('./api/auth')
+const { searchByLocation } = require('./api/search')
 
 const port = process.env.PORT || 3001
 
@@ -11,7 +12,8 @@ const listening = err =>
 
 const endpoints = routes({
   '/auth/guest': guestLogin,
-  '/auth': userLogin
+  '/auth': userLogin,
+  '/search/point': searchByLocation
 })
 
 const app = compose(endpoints, parseJson)

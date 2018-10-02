@@ -6,7 +6,8 @@ const {
 const { Resolved } = Async
 const { merge, pick, converge, invoker, objOf, prop } = require('ramda')
 
-const { errorResponse, signJwt, tapLog } = require('../lib/utils')
+const { errorResponse, tapLog } = require('../lib/utils')
+const { signJwt, verifyJwt } = require('../lib/jwt')
 const { getCookie } = require('../upstream/auth')
 const { fetchUserDetails } = require('../upstream/userDetails')
 

@@ -19,6 +19,7 @@
   },
   "scripts": {
     "fix": "./node_modules/.bin/eslint --fix",
+    "ava": "node_modules/.bin/ava --verbose --watch",
     "test": "node_modules/.bin/ava test/**/*.test.js --verbose",
     "test:watch": "node_modules/.bin/ava --verbose --watch --match='!*Auth*'",
     "dev": "nodemon src/main.js",
