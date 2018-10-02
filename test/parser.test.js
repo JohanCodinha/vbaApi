@@ -1,5 +1,5 @@
 import test from 'ava'
-import { parser } from '../lib/parser'
+import { parser } from '../lib/xmlrpcToJson'
 import parserInputs from '../config/parserInputs'
 // test.beforeEach(async t => {
 //   t.context.request = request(app)

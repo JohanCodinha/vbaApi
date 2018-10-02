@@ -16,7 +16,10 @@ const endpoints = routes({
   '/search/point': searchByLocation
 })
 
-const app = compose(endpoints, parseJson)
+const app = mount({
+  app: compose(endpoints, parseJson),
+  logger
+})
 
-http.createServer(mount({app, logger})).listen(port, listening)
+http.createServer(app).listen(port, listening)
 module.exports = app

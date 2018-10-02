@@ -44,9 +44,9 @@ const getUserDetails = compose(
   chain(
     compose(
       maybeToAsync(
-        errorResponse(502, { message: 'Upstream backend response error'})
+        errorResponse(502, { message: 'Upstream backend response error' })
       ),
-      map(pick(['username', 'userUid'])),
+      map(pick(['username', 'userUid', 'displayName'])),
       safeAfter(isObject, prop('data'))
     )
   ),
