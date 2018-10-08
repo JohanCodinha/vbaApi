@@ -7,6 +7,8 @@ const { searchByLocation } = require('./api/search')
 
 const port = process.env.PORT || 3001
 
+Error.stackTraceLimit = Infinity
+
 const listening = err =>
   err ? console.error(err) : console.info(`Listening on port: ${port}`)
 
@@ -17,7 +19,7 @@ const endpoints = routes({
 })
 
 const app = mount({
-  app: compose(endpoints, parseJson),
+  app: compose(x => x.catch(x => {console.log(x); debugger; throw(x)}), endpoints, parseJson),
   logger
 })
 

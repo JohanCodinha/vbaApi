@@ -6,12 +6,10 @@ const {
 const { Resolved } = Async
 const { merge, pick, converge, invoker, objOf, prop } = require('ramda')
 
-const { errorResponse, tapLog } = require('../lib/utils')
+const { errorResponse, toPromise,  tapLog } = require('../lib/utils')
 const { signJwt, verifyJwt } = require('../lib/jwt')
 const { getCookie } = require('../upstream/auth')
 const { fetchUserDetails } = require('../upstream/userDetails')
-
-const toPromise = invoker(0, 'toPromise')
 
 const extractCredentials = converge(
   liftA2(username => password => ({ username, password })),
@@ -50,15 +48,12 @@ const getUserDetails = compose(
       safeAfter(isObject, prop('data'))
     )
   ),
-  map(tapLog),
   fetchUserDetails
 )
 
 const userLogin = compose(
   toPromise,
-  map(tapLog),
   map(json),
-  bimap(tapLog, tapLog ),
   chain(
     converge(
       liftA2(merge),
