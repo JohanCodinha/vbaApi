@@ -3,59 +3,101 @@ const {
   map,
   propPath, resultToAsync, compose, maybeToResult,
   liftN,
+  runWith,
   curry, flip, alt, Maybe,
   bimap,
-  identity
+  identity,
+  ReaderT,
+  Result,
+  Async,
+  chain,
+  safe,
+  isNumber,
+  tap,
+  either,
+  ap,
+  concat,
 } = require('crocks')
-const { converge, mergeAll, nAry, unapply, objOf } = require('ramda')
+const { converge, evolve, mergeAll, nAry, unapply, objOf, is } = require('ramda')
 
 const { errorResponse, tapLog, toPromise } = require('../lib/utils')
 const { verifyJwt } = require('../lib/jwt')
+const { extractParams } = require('./extractParams')
+const { fetchSpeciesListArea } = require('../upstream/search')
+const ReaderResult = ReaderT(Result)
 
-const getKeyProp = paramKeys => prop => data => paramKeys
-  .map(key => propPath([key, prop])(data))
-  .reduce(flip(alt), Maybe.zero())
-
-const getParam = parameter =>
+// validParam :: string -> pred -> Result( [err] { key: Maybe} )
+const validParam = curry((name, pred) =>
   maybeToResult(
     [{
-      parameter,
+      parameter: name,
       code: 'INVALID_PARAMETER',
-      message: `Missing required parameter: ${parameter}`
+      message: `Invalid parameter: ${name}`
     }],
-    compose(
-      map(objOf(parameter)),
-      getKeyProp([ 'body', 'query', 'params' ])(parameter)
-    )
+    chain(safe(pred))
   )
+)
+// fetchSpecies :: Result r => r e details -> r e taxonId -> r e latitude -> r e longitude -> r e radius -> r e Async
+const fetchSpecies = liftN(5, fetchSpeciesListArea)
 
-// params => req => object
-const getRequiredParams = paramNames => converge(
-  liftN(paramNames.length, unapply(mergeAll)),
-  paramNames.map(getParam)
+// applyToken  :: a -> ReaderT e (Result e b)
+const applyToken = data => ReaderResult(
+  ({ token }) => ap(token, Result.of(data))
 )
 
+// searchAreaBySpecies :: a -> ReaderT e (Result e b)
+const searchAreaBySpecies = () => ReaderResult(
+  ({ longitude, latitude, radius, taxonId, details }) => fetchSpecies(details, taxonId, latitude, longitude, radius)
+)
+
+// Monad m => ReaderT e (m a) -> m e a
+const runReader = reader => flip(runWith, reader())
+
+// searchAreaBySpeciesFlow :: { key: maybe } -> Either e Async( e data )
+const searchAreaBySpeciesFlow = compose(
+  chain(applyToken),
+  chain(searchAreaBySpecies),
+  ReaderResult.of
+)
+// const e = either(identity, identity)
 const searchByLocation = compose(
   toPromise,
-  resultToAsync,
   map(json),
-  // map(verifyJwt),
-  // propPath(['body', 'token'])
-  bimap(errorResponse(400), identity),
+  // Async
+  either(compose(Async.Rejected, errorResponse(400)), identity),
   tapLog,
-  converge((...args) => liftN(args.length, unapply(mergeAll))(...args),
-    [
-      ...['radius', 'fifou', 'nope'].map(param =>
-        maybeToResult([{message: 'missing non required params'}],
-          compose(
-            map(objOf(param)),
-            getKeyProp([ 'body', 'query', 'params' ])(param)
-          )
-        )),
-        getRequiredParams(['token', 'longitude' ])
-    ])
+  // Result e Async
+  chain(runReader(searchAreaBySpeciesFlow)),
+  tapLog,
+  // Result e { key: Maybe }
+  map(evolve(
+    {
+      token: compose(
+        chain(verifyJwt),
+        maybeToResult('')
+      ),
+      longitude: validParam('longitude', isNumber),
+      latitude: validParam('latitude', isNumber),
+      radius: validParam('radius', isNumber),
+      taxonId: compose(
+        alt(Result.Ok('')),
+        validParam('taxonId', isNumber)
+      ),
+      details: compose(
+        map(x => x ? 'detailed' : 'default'),
+        // Maybe a -> Result e a
+        validParam('details', is(Boolean)),
+        // Default to false
+        alt(Maybe.Just(false))
+      )
+    }
+  )),
+  tapLog,
+  bimap(errorResponse(400), identity),
+  // Result e { key: Maybe }
+  extractParams(['token'], ['radius', 'longitude', 'latitude', 'taxonId', 'details'])
 )
+
 module.exports = {
   searchByLocation,
-  getParams: curry(getRequiredParams)
 }

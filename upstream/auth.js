@@ -1,8 +1,8 @@
 const request = require('request-promise-native')
-const { Async, constant, chain, bimap, propPathOr } = require('crocks')
+const { Async, maybeToAsync, constant, chain, bimap, propPath, propPathOr } = require('crocks')
 const { T, head, merge, objOf, split, join, map, compose, cond,
   equals, flip, gt, identity, prop, test } = require('ramda')
-const { errorResponse } = require('../lib/utils')
+const { errorResponse, tapLog } = require('../lib/utils')
 const statusCodeProp = prop('statusCode')
 const gt400 = flip(gt)(400)
 const statusCodeGt400 = compose(gt400, statusCodeProp)
@@ -30,9 +30,7 @@ const cleanResCookie = compose(
       head,
       split(';')
     )
-  ),
-  prop('set-cookie'),
-  prop('headers')
+  )
 )
 
 const urlContainsErrors = compose(
@@ -68,8 +66,10 @@ const responseHandling =
     [
       statusCodeIs(302),
       compose(
-        Resolved,
-        cleanResCookie
+        map(tapLog),
+        maybeToAsync('error'),
+        map(cleanResCookie),
+        propPath(['headers', 'set-cookie'])
       )
     ],
     [
@@ -78,12 +78,14 @@ const responseHandling =
     ]
   ])
 
+// Async e { k: value } -> Async e string
 const getCookie =
   compose(
     chain(responseHandling),
     bimap(errorHandling, identity),
     Async.fromPromise(request),
     merge(requestBaseOption),
+    // { form: { username, password } }
     objOf('form')
   )
 

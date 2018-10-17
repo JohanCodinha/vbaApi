@@ -33,11 +33,11 @@ const login = form =>
 const guestLogin = compose(
   toPromise,
   map(json),
-  chain(login),
-  Resolved,
+  login,
   constant({ guest: 2, enter: 'Guest: I Agree' })
 )
 
+// Async e string -> Async e { username, userUid, displayName }
 const getUserDetails = compose(
   chain(
     compose(
@@ -45,30 +45,39 @@ const getUserDetails = compose(
         errorResponse(502, { message: 'Upstream backend response error' })
       ),
       map(pick(['username', 'userUid', 'displayName'])),
+      // {} -> Maybe {}
       safeAfter(isObject, prop('data'))
     )
   ),
+  // Async e string -> Async e Response
   fetchUserDetails
 )
 
 const userLogin = compose(
   toPromise,
+  // Async e {} -> Async e String
   map(json),
+  // Async e string -> Async e { jwt::String , username::String, userUid::String, displayName::String }
   chain(
     converge(
       liftA2(merge),
       [
         compose(
           Resolved,
+          // String -> { jwt::String }
           cookieStrToJwt
         ),
+        // Async e string -> Async e { username, userUid, displayName }
         getUserDetails
       ]
     )
   ),
+  // Async e { k: value } -> Async e string
   chain(getCookie),
+  // Async e a -> Async b a
   bimap(errorResponse(400), identity),
-  resultToAsync(extractCredentials)
+  // Req -> Async e { key: string }
+  resultToAsync(extractCredentials),
 )
 
 module.exports = {
