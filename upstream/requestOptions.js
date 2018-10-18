@@ -38,6 +38,7 @@ const cookiePath = compose(
   objOf('Cookie')
 )
 
+// requestOptions :: options::String -> transaction::String -> cookie::String -> requestOptionsObject::Object
 const requestOptions = useWith(buildOptions, [identity, transactionPath, cookiePath])
 
 module.exports = requestOptions(options)

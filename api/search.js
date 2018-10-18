@@ -23,20 +23,10 @@ const { converge, evolve, mergeAll, nAry, unapply, objOf, is } = require('ramda'
 const { errorResponse, tapLog, toPromise } = require('../lib/utils')
 const { verifyJwt } = require('../lib/jwt')
 const { extractParams } = require('./extractParams')
+const { validParam } = require('./validParam')
 const { fetchSpeciesListArea } = require('../upstream/search')
 const ReaderResult = ReaderT(Result)
 
-// validParam :: string -> pred -> Result( [err] { key: Maybe} )
-const validParam = curry((name, pred) =>
-  maybeToResult(
-    [{
-      parameter: name,
-      code: 'INVALID_PARAMETER',
-      message: `Invalid parameter: ${name}`
-    }],
-    chain(safe(pred))
-  )
-)
 // fetchSpecies :: Result r => r e details -> r e taxonId -> r e latitude -> r e longitude -> r e radius -> r e Async
 const fetchSpecies = liftN(5, fetchSpeciesListArea)
 
@@ -69,7 +59,7 @@ const searchByLocation = compose(
   // Result e Async
   chain(runReader(searchAreaBySpeciesFlow)),
   tapLog,
-  // Result e { key: Maybe }
+  // Result e { key: Result }
   map(evolve(
     {
       token: compose(

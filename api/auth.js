@@ -1,29 +1,17 @@
 const { json } = require('paperplane')
 const {
-  Async, maybeToAsync, safeAfter, isObject, chain, liftA2, maybeToResult, map, bimap,
-  propPath, resultToAsync, compose, constant, identity
+  Async, maybeToAsync, safeAfter, isObject, chain, liftA2, map,
+  compose, constant, identity, either, isString
 } = require('crocks')
 const { Resolved } = Async
-const { merge, pick, converge, invoker, objOf, prop } = require('ramda')
+const { merge, ifElse, pick, converge, toString, evolve, objOf, prop } = require('ramda')
 
-const { errorResponse, toPromise,  tapLog } = require('../lib/utils')
-const { signJwt, verifyJwt } = require('../lib/jwt')
+const { errorResponse, toPromise } = require('../lib/utils')
+const { signJwt } = require('../lib/jwt')
 const { getCookie } = require('../upstream/auth')
 const { fetchUserDetails } = require('../upstream/userDetails')
-
-const extractCredentials = converge(
-  liftA2(username => password => ({ username, password })),
-  [
-    maybeToResult([{
-      parameter: 'username',
-      code: 'INVALID_PARAMETER',
-      message: 'Missing required parameter: username'}], propPath(['body', 'username'])),
-    maybeToResult([{
-      parameter: 'password',
-      code: 'INVALID_PARAMETER',
-      message: 'Missing required parameter: password'}], propPath(['body', 'password']))
-  ]
-)
+const { extractParams } = require('./extractParams')
+const { validParam } = require('./validParam')
 
 const cookieStrToJwt = compose(objOf('jwt'), signJwt)
 const login = form =>
@@ -49,8 +37,12 @@ const getUserDetails = compose(
       safeAfter(isObject, prop('data'))
     )
   ),
-  // Async e string -> Async e Response
+  // string -> Async e Response
   fetchUserDetails
+)
+
+const liftedGetCookie = liftA2(
+  username => password => getCookie({ username, password })
 )
 
 const userLogin = compose(
@@ -72,12 +64,21 @@ const userLogin = compose(
       ]
     )
   ),
-  // Async e { k: value } -> Async e string
-  chain(getCookie),
-  // Async e a -> Async b a
-  bimap(errorResponse(400), identity),
-  // Req -> Async e { key: string }
-  resultToAsync(extractCredentials),
+  either(compose(Async.Rejected, errorResponse(400)), identity),
+  // getCookie:: username -> password -> Async e string
+  chain(({ username, password }) => liftedGetCookie(username, password)),
+  map(evolve({
+    username: compose(
+      validParam('username', isString),
+      map(ifElse(isString, identity, toString))
+    ),
+    password: compose(
+      validParam('password', isString),
+      map(ifElse(isString, identity, toString))
+    )
+  })),
+  // Result e { key: Maybe }
+  extractParams([ 'username', 'password' ])
 )
 
 module.exports = {

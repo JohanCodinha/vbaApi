@@ -1,5 +1,5 @@
 const { prop, Result, Maybe, maybeToResult, compose, map, isDefined, tap, flip, curry, identity, propPath, alt} = require('crocks')
-const { mergeAll, objOf, converge, unapply, liftN, ifElse, length, call, concat } = require('ramda')
+const { mergeAll, objOf, converge, unapply, liftN, ifElse, length, call, curryN, concat } = require('ramda')
 
 // num -> [m {}] -> m {}
 const liftMergeAll = flip(liftN)(unapply(mergeAll))
@@ -32,7 +32,7 @@ const getProp = getPropFromKeys([ 'body', 'query', 'params' ])
 const getObjOfProp = param => data => Result.Ok({ [param]: getProp(param, data) })
 
 // [string] -> [string] -> {} -> Result [{key: Maybe}]
-const extractParams = curry((requiredParams, params) =>
+const extractParams = (requiredParams, params = []) =>
   converge(
     mergeAllAdt,
     concat(
@@ -40,7 +40,6 @@ const extractParams = curry((requiredParams, params) =>
       params.map(getObjOfProp)
     )
   )
-)
 
 module.exports = {
   extractParams,

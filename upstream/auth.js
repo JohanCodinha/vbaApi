@@ -1,5 +1,5 @@
 const request = require('request-promise-native')
-const { Async, maybeToAsync, constant, chain, bimap, propPath, propPathOr } = require('crocks')
+const { Async, curry, maybeToAsync, constant, chain, bimap, propPath, propPathOr } = require('crocks')
 const { T, head, merge, objOf, split, join, map, compose, cond,
   equals, flip, gt, identity, prop, test } = require('ramda')
 const { errorResponse, tapLog } = require('../lib/utils')
@@ -79,15 +79,14 @@ const responseHandling =
   ])
 
 // Async e { k: value } -> Async e string
-const getCookie =
-  compose(
-    chain(responseHandling),
-    bimap(errorHandling, identity),
-    Async.fromPromise(request),
-    merge(requestBaseOption),
-    // { form: { username, password } }
-    objOf('form')
-  )
+const getCookie = compose(
+  chain(responseHandling),
+  bimap(errorHandling, identity),
+  Async.fromPromise(request),
+  merge(requestBaseOption),
+  // { form: { username, password } }
+  objOf('form')
+)
 
 module.exports = {
   getCookie
