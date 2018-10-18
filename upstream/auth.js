@@ -66,7 +66,6 @@ const responseHandling =
     [
       statusCodeIs(302),
       compose(
-        map(tapLog),
         maybeToAsync('error'),
         map(cleanResCookie),
         propPath(['headers', 'set-cookie'])

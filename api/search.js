@@ -55,10 +55,8 @@ const searchByLocation = compose(
   map(json),
   // Async
   either(compose(Async.Rejected, errorResponse(400)), identity),
-  tapLog,
   // Result e Async
   chain(runReader(searchAreaBySpeciesFlow)),
-  tapLog,
   // Result e { key: Result }
   map(evolve(
     {
@@ -82,7 +80,6 @@ const searchByLocation = compose(
       )
     }
   )),
-  tapLog,
   bimap(errorResponse(400), identity),
   // Result e { key: Maybe }
   extractParams(['token'], ['radius', 'longitude', 'latitude', 'taxonId', 'details'])
