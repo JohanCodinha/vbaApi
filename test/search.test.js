@@ -10,6 +10,7 @@ test('Search - should validate token', async t => {
   const { body } = await request(app)
     .post('/search/point')
     .send({
+      details: true,
       longitude: 145.09684546098637,
       latitude: -36.70419866295145,
       radius: 1000,

@@ -1,42 +1,36 @@
 const { json } = require('paperplane')
 const {
   map,
-  propPath, resultToAsync, compose, maybeToResult,
+  compose, maybeToResult,
+  coalesce,
+  either,
   liftN,
   runWith,
-  curry, flip, alt, Maybe,
+  flip, alt, Maybe,
   bimap,
   identity,
   ReaderT,
   Result,
   Async,
   chain,
-  safe,
   isNumber,
+  isString,
+  isBoolean,
   tap,
-  either,
   ap,
-  concat,
+  constant
 } = require('crocks')
-const { converge, evolve, mergeAll, nAry, unapply, objOf, is } = require('ramda')
+const { evolve, is, ifElse } = require('ramda')
 
 const { errorResponse, tapLog, toPromise } = require('../lib/utils')
 const { verifyJwt } = require('../lib/jwt')
-const { extractParams } = require('./extractParams')
+const {
+  extractParams,
+  extractValidateParams } = require('./extractParams')
+// const { validParam } = require('./validParam')
 const { fetchSpeciesListArea } = require('../upstream/search')
 const ReaderResult = ReaderT(Result)
 
-// validParam :: string -> pred -> Result( [err] { key: Maybe} )
-const validParam = curry((name, pred) =>
-  maybeToResult(
-    [{
-      parameter: name,
-      code: 'INVALID_PARAMETER',
-      message: `Invalid parameter: ${name}`
-    }],
-    chain(safe(pred))
-  )
-)
 // fetchSpecies :: Result r => r e details -> r e taxonId -> r e latitude -> r e longitude -> r e radius -> r e Async
 const fetchSpecies = liftN(5, fetchSpeciesListArea)
 
@@ -65,37 +59,31 @@ const searchByLocation = compose(
   map(json),
   // Async
   either(compose(Async.Rejected, errorResponse(400)), identity),
-  tapLog,
   // Result e Async
-  chain(runReader(searchAreaBySpeciesFlow)),
-  tapLog,
-  // Result e { key: Maybe }
+  runReader(searchAreaBySpeciesFlow),
+  // Result e { key: Result }
   map(evolve(
     {
-      token: compose(
-        chain(verifyJwt),
-        maybeToResult('')
-      ),
-      longitude: validParam('longitude', isNumber),
-      latitude: validParam('latitude', isNumber),
-      radius: validParam('radius', isNumber),
-      taxonId: compose(
-        alt(Result.Ok('')),
-        validParam('taxonId', isNumber)
-      ),
-      details: compose(
-        map(x => x ? 'detailed' : 'default'),
-        // Maybe a -> Result e a
-        validParam('details', is(Boolean)),
-        // Default to false
-        alt(Maybe.Just(false))
+      token: chain(verifyJwt),
+      taxonId: alt(Result.Ok('')),
+      details: coalesce(
+        constant('default'),
+        ifElse(
+          identity,
+          constant('detailed'),
+          constant('default'))
       )
     }
   )),
-  tapLog,
-  bimap(errorResponse(400), identity),
-  // Result e { key: Maybe }
-  extractParams(['token'], ['radius', 'longitude', 'latitude', 'taxonId', 'details'])
+  // Result e { key: Result }
+  extractValidateParams({
+    token: isString,
+    longitude: isNumber,
+    latitude: isNumber,
+    radius: isNumber,
+    taxonId: isNumber,
+    details: isBoolean
+  })
 )
 
 module.exports = {
