@@ -4,14 +4,15 @@ const {
   compose, constant, identity, either, isString
 } = require('crocks')
 const { Resolved } = Async
-const { merge, ifElse, pick, converge, toString, evolve, objOf, prop } = require('ramda')
+const { allPass, merge, not, complement, isEmpty, ifElse, pick, converge, toString, evolve, objOf, prop } = require('ramda')
 
 const { errorResponse, toPromise } = require('../lib/utils')
 const { signJwt } = require('../lib/jwt')
 const { getCookie } = require('../upstream/auth')
 const { fetchUserDetails } = require('../upstream/userDetails')
-const { extractParams } = require('./extractParams')
-const { validParam } = require('./validParam')
+const {
+  extractParams,
+  extractValidateParams } = require('./extractParams')
 
 const cookieStrToJwt = compose(objOf('jwt'), signJwt)
 const login = form =>
@@ -66,19 +67,12 @@ const userLogin = compose(
   ),
   either(compose(Async.Rejected, errorResponse(400)), identity),
   // getCookie:: username -> password -> Async e string
-  chain(({ username, password }) => liftedGetCookie(username, password)),
-  map(evolve({
-    username: compose(
-      validParam('username', isString),
-      map(ifElse(isString, identity, toString))
-    ),
-    password: compose(
-      validParam('password', isString),
-      map(ifElse(isString, identity, toString))
-    )
-  })),
-  // Result e { key: Maybe }
-  extractParams([ 'username', 'password' ])
+  ({ username, password }) => liftedGetCookie(username, password),
+  // Result e { key: Result }
+  extractValidateParams({
+    username: allPass([ isString, complement(isEmpty) ]),
+    password: complement(isEmpty)
+  })
 )
 
 module.exports = {

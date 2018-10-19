@@ -24,15 +24,10 @@ const { evolve, is, ifElse } = require('ramda')
 
 const { errorResponse, tapLog, toPromise } = require('../lib/utils')
 const { verifyJwt } = require('../lib/jwt')
-<<<<<<< HEAD
-const { extractParams } = require('./extractParams')
-const { validParam } = require('./validParam')
-=======
 const {
   extractParams,
   extractValidateParams } = require('./extractParams')
-// const { validParam } = require('./validParam')
->>>>>>> search
+
 const { fetchSpeciesListArea } = require('../upstream/search')
 const ReaderResult = ReaderT(Result)
 
@@ -65,11 +60,7 @@ const searchByLocation = compose(
   // Async
   either(compose(Async.Rejected, errorResponse(400)), identity),
   // Result e Async
-<<<<<<< HEAD
-  chain(runReader(searchAreaBySpeciesFlow)),
-=======
   runReader(searchAreaBySpeciesFlow),
->>>>>>> search
   // Result e { key: Result }
   map(evolve(
     {
@@ -84,11 +75,6 @@ const searchByLocation = compose(
       )
     }
   )),
-<<<<<<< HEAD
-  bimap(errorResponse(400), identity),
-  // Result e { key: Maybe }
-  extractParams(['token'], ['radius', 'longitude', 'latitude', 'taxonId', 'details'])
-=======
   // Result e { key: Result }
   extractValidateParams({
     token: isString,
@@ -98,9 +84,8 @@ const searchByLocation = compose(
     taxonId: isNumber,
     details: isBoolean
   })
->>>>>>> search
 )
 
 module.exports = {
-  searchByLocation,
+  searchByLocation
 }
