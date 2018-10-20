@@ -17,4 +17,7 @@ test('Search - should validate token', async t => {
       token: jwt })
   //console.log('response from test', body)
   t.is(typeof body, 'object')
+  t.end()
 })
+
+test.onFinish(() => process.exit(0))

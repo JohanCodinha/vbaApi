@@ -1,13 +1,12 @@
 const { json } = require('paperplane')
 const {
   map,
-  compose, maybeToResult,
+  compose,
   coalesce,
   either,
   liftN,
   runWith,
-  flip, alt, Maybe,
-  bimap,
+  flip, alt,
   identity,
   ReaderT,
   Result,
@@ -16,19 +15,16 @@ const {
   isNumber,
   isString,
   isBoolean,
-  tap,
   ap,
   constant
 } = require('crocks')
-const { evolve, is, ifElse } = require('ramda')
+const { evolve, ifElse } = require('ramda')
 
 const { errorResponse, tapLog, toPromise } = require('../lib/utils')
 const { verifyJwt } = require('../lib/jwt')
-const {
-  extractParams,
-  extractValidateParams } = require('./extractParams')
-
+const { extractValidateParams } = require('./extractParams')
 const { fetchSpeciesListArea } = require('../upstream/search')
+
 const ReaderResult = ReaderT(Result)
 
 // fetchSpecies :: Result r => r e details -> r e taxonId -> r e latitude -> r e longitude -> r e radius -> r e Async
@@ -39,9 +35,18 @@ const applyToken = data => ReaderResult(
   ({ token }) => ap(token, Result.of(data))
 )
 
+const detailsDefault = coalesce(
+  constant('default'),
+  ifElse(
+    identity,
+    constant('detailed'),
+    constant('default'))
+)
+
 // searchAreaBySpecies :: a -> ReaderT e (Result e b)
 const searchAreaBySpecies = () => ReaderResult(
-  ({ longitude, latitude, radius, taxonId, details }) => fetchSpecies(details, taxonId, latitude, longitude, radius)
+  ({ longitude, latitude, radius, taxonId, details }) =>
+  fetchSpecies(detailsDefault(details), taxonId, latitude, longitude, radius)
 )
 
 // Monad m => ReaderT e (m a) -> m e a
@@ -66,13 +71,6 @@ const searchByLocation = compose(
     {
       token: chain(verifyJwt),
       taxonId: alt(Result.Ok('')),
-      details: coalesce(
-        constant('default'),
-        ifElse(
-          identity,
-          constant('detailed'),
-          constant('default'))
-      )
     }
   )),
   // Result e { key: Result }

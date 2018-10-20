@@ -29,7 +29,6 @@ test('Auth - user login return error with missing password', async t => {
   t.is(status, 400)
   t.is(type, 'application/json')
   t.is(Array.isArray(body.errors), true)
-  console.log(body)
   t.is(!!body.errors.find(e => e.message === 'Missing required parameter: password'), true)
   t.is(body.errors.length, 1)
   t.end()
@@ -56,3 +55,5 @@ test('Auth - user login return error with missing credentials', async t => {
   t.is(body.errors.length, 2)
   t.end()
 })
+
+test.onFinish(() => process.exit(0))

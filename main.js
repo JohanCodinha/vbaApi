@@ -19,7 +19,7 @@ const endpoints = routes({
 })
 
 const app = mount({
-  app: compose(x => x.catch(x => {console.log(x); debugger; throw(x)}), endpoints, parseJson),
+  app: compose(/* x => x.catch(x => {console.log(x); debugger; throw(x)}), */ endpoints, parseJson),
   logger
 })
 

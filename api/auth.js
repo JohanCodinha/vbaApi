@@ -4,21 +4,21 @@ const {
   compose, constant, identity, either, isString
 } = require('crocks')
 const { Resolved } = Async
-const { allPass, merge, not, complement, isEmpty, ifElse, pick, converge, toString, evolve, objOf, prop } = require('ramda')
+const { allPass, merge, complement, isEmpty, pick, converge, objOf, prop } = require('ramda')
 
 const { errorResponse, toPromise } = require('../lib/utils')
 const { signJwt } = require('../lib/jwt')
 const { getCookie } = require('../upstream/auth')
 const { fetchUserDetails } = require('../upstream/userDetails')
-const {
-  extractParams,
-  extractValidateParams } = require('./extractParams')
+const { extractValidateParams } = require('./extractParams')
 
+// cookieStrToJwt :: String -> { jwt: String }
 const cookieStrToJwt = compose(objOf('jwt'), signJwt)
 const login = form =>
   getCookie(form)
     .map(cookieStrToJwt)
 
+// guestLogin :: a -> Async e b
 const guestLogin = compose(
   toPromise,
   map(json),
@@ -45,27 +45,28 @@ const getUserDetails = compose(
 const liftedGetCookie = liftA2(
   username => password => getCookie({ username, password })
 )
+// mergeUserDetailsWithJwt :: String-> Async e { jwt, ...userDetails }
+const mergeUserDetailsWithJwt = converge(
+  liftA2(merge),
+  [
+    compose(
+      Resolved,
+      // String -> { jwt::String }
+      cookieStrToJwt
+    ),
+    // Async e string -> Async e { username, userUid, displayName }
+    getUserDetails
+  ]
+)
+const eitherToAsync = either(compose(Async.Rejected, errorResponse(400)), identity)
 
 const userLogin = compose(
   toPromise,
   // Async e {} -> Async e String
   map(json),
   // Async e string -> Async e { jwt::String , username::String, userUid::String, displayName::String }
-  chain(
-    converge(
-      liftA2(merge),
-      [
-        compose(
-          Resolved,
-          // String -> { jwt::String }
-          cookieStrToJwt
-        ),
-        // Async e string -> Async e { username, userUid, displayName }
-        getUserDetails
-      ]
-    )
-  ),
-  either(compose(Async.Rejected, errorResponse(400)), identity),
+  chain(mergeUserDetailsWithJwt),
+  eitherToAsync,
   // getCookie:: username -> password -> Async e string
   ({ username, password }) => liftedGetCookie(username, password),
   // Result e { key: Result }
