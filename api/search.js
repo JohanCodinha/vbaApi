@@ -32,7 +32,7 @@ const fetchSpecies = liftN(5, fetchSpeciesListArea)
 
 // applyToken  :: a -> ReaderT e (Result e b)
 const applyToken = data => ReaderResult(
-  ({ token }) => ap(token, Result.of(data))
+  ({ token }) => ap(token.chain(verifyJwt), Result.of(data))
 )
 
 const detailsDefault = coalesce(
@@ -46,7 +46,7 @@ const detailsDefault = coalesce(
 // searchAreaBySpecies :: a -> ReaderT e (Result e b)
 const searchAreaBySpecies = () => ReaderResult(
   ({ longitude, latitude, radius, taxonId, details }) =>
-  fetchSpecies(detailsDefault(details), taxonId, latitude, longitude, radius)
+    fetchSpecies(detailsDefault(details), alt(taxonId, Result.Ok('')), latitude, longitude, radius)
 )
 
 // Monad m => ReaderT e (m a) -> m e a
@@ -67,12 +67,7 @@ const searchByLocation = compose(
   // Result e Async
   runReader(searchAreaBySpeciesFlow),
   // Result e { key: Result }
-  map(evolve(
-    {
-      token: chain(verifyJwt),
-      taxonId: alt(Result.Ok('')),
-    }
-  )),
+  tapLog,
   // Result e { key: Result }
   extractValidateParams({
     token: isString,

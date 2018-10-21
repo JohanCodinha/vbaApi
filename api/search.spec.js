@@ -15,7 +15,7 @@ test('Search - should validate token', async t => {
       latitude: -36.70419866295145,
       radius: 1000,
       token: jwt })
-  //console.log('response from test', body)
+  console.log('response from test', body)
   t.is(typeof body, 'object')
   t.end()
 })
